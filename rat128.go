@@ -197,9 +197,9 @@ func (x N) Cmp(y N) int {
 	return x.Sub(y).Sign()
 }
 
-// Add adds x and y and returns the result.
-// Add panics if the result would overflow.
-func (x N) Add(y N) N {
+// TryAdd adds x and y and returns the result.
+// TryAdd returns 0 and a non-nil error if the result would overflow.
+func (x N) TryAdd(y N) (N, error) {
 	mx, nx := x.Num(), x.Den()
 	my, ny := y.Num(), y.Den()
 
@@ -223,7 +223,7 @@ func (x N) Add(y N) N {
 		//
 		// It also follows that the denominator cannot overflow, since
 		// len(nx*ny) <= 62.
-		return New(mx*ny+my*nx, nx*ny)
+		return Try(mx*ny+my*nx, nx*ny)
 	}
 
 	// We can't use simple arithmetic if we've made it this far, because the
@@ -231,9 +231,9 @@ func (x N) Add(y N) N {
 	// But first, let's check the signs to skip unnecessary work.
 	s1, s2 := sgn64(mx), sgn64(my)
 	if s1 == 0 {
-		return y
+		return y, nil
 	} else if s2 == 0 {
-		return x
+		return x, nil
 	}
 
 	// Multiply the mx*ny, my*nx, and nx*ny terms with 128-bit precision.
@@ -263,7 +263,7 @@ func (x N) Add(y N) N {
 		ml, mlc = bits.Add64(m1l, m2l, 0)
 		mh, mhc = bits.Add64(m1h, m2h, mlc)
 		if mhc != 0 {
-			panic(ErrNumOverflow)
+			return N{}, ErrNumOverflow
 		}
 	} else {
 		// m1 < m2
@@ -280,7 +280,7 @@ func (x N) Add(y N) N {
 		ml, mlb = bits.Sub64(m1l, m2l, 0)
 		mh, mhb = bits.Sub64(m1h, m2h, mlb)
 		if mhb != 0 {
-			panic(ErrNumOverflow)
+			return N{}, ErrNumOverflow
 		}
 	}
 
@@ -289,13 +289,29 @@ func (x N) Add(y N) N {
 	d := GCD(nx, ny)
 	m, _ := bits.Div64(mh, ml, uint64(d))
 	if m > math.MaxInt64 {
-		panic(ErrNumOverflow)
+		return N{}, ErrNumOverflow
 	}
 	n, _ := bits.Div64(nh, nl, uint64(d))
 	if n > math.MaxInt64 {
-		panic(ErrDenOverflow)
+		return N{}, ErrDenOverflow
 	}
-	return New(sgn*int64(m), int64(n))
+	return Try(sgn*int64(m), int64(n))
+}
+
+// Add adds x and y and returns the result.
+// Add panics if the result would overflow.
+func (x N) Add(y N) N {
+	z, err := x.TryAdd(y)
+	if err != nil {
+		panic(err)
+	}
+	return z
+}
+
+// TrySub subtracts y from x and returns the result.
+// TrySub returns 0 and a non-nil error if the result would overflow.
+func (x N) TrySub(y N) (N, error) {
+	return x.TryAdd(y.Neg())
 }
 
 // Sub subtracts y from x and returns the result.
@@ -306,13 +322,13 @@ func (x N) Sub(y N) N {
 	return x.Add(y.Neg())
 }
 
-// Mul multiplies x and y and returns the result.
-// Mul panics if the result would overflow.
-func (x N) Mul(y N) N {
+// TryMul multiplies x and y and returns the result.
+// TryMul returns 0 and a non-nil error if the result would overflow.
+func (x N) TryMul(y N) (N, error) {
 	// Compute the sign of the result.
 	sgn := int64(x.Sign() * y.Sign())
 	if sgn == 0 {
-		return N{}
+		return N{}, nil
 	}
 	// We can ignore the operand signs now that we know the result sign, so we
 	// work only with absolute values for simplicity.
@@ -336,20 +352,39 @@ func (x N) Mul(y N) N {
 	if mx < math.MaxInt32 && my < math.MaxInt32 && nx < math.MaxInt32 && ny < math.MaxInt32 {
 		// See Add for a detailed overflow analysis; suffice it to say that
 		// the above if statement protects us from overflow here.
-		return New(sgn*mx*my, nx*ny)
+		return Try(sgn*mx*my, nx*ny)
 	}
 
 	// At this point, we can't trust naive multiplication to not overflow, so
 	// we use wide arithmetic to check for overflow.
 	mh, ml := bits.Mul64(uint64(mx), uint64(my))
 	if mh > 0 || ml > math.MaxInt64 {
-		panic(ErrNumOverflow)
+		return N{}, ErrNumOverflow
 	}
 	nh, nl := bits.Mul64(uint64(nx), uint64(ny))
 	if nh > 0 || nl > math.MaxInt64 {
-		panic(ErrDenOverflow)
+		return N{}, ErrDenOverflow
 	}
-	return New(sgn*int64(ml), int64(nl))
+	return Try(sgn*int64(ml), int64(nl))
+}
+
+// Mul multiplies x and y and returns the result.
+// Mul panics if the result would overflow.
+func (x N) Mul(y N) N {
+	z, err := x.TryMul(y)
+	if err != nil {
+		panic(err)
+	}
+	return z
+}
+
+// TryDiv divides x by y and returns the result.
+// TryDiv returns 0 and a non-nil error if the result would overflow.
+func (x N) TryDiv(y N) (N, error) {
+	if y.m == 0 {
+		return N{}, ErrDivByZero
+	}
+	return x.TryMul(y.Inv())
 }
 
 // Div divides x by y and returns the result.
@@ -366,7 +401,7 @@ func (x N) String() string {
 }
 
 // Float64 returns the floating-point equivalent of x. If exact is true, then
-// value is exactly equal to x; otherwise, it is the closest approximation.
+// v is exactly equal to x; otherwise, it is the closest approximation.
 func (x N) Float64() (v float64, exact bool) {
 	m, n := x.Num(), x.Den()
 
