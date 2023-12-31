@@ -62,4 +62,3 @@ The following will be evaluated on a case-by-case basis:
 - Parsing and outputting decimal strings
 - More test coverage
 - Convenience methods as practical usage demonstrates their value
-- `TryAdd`, `TrySub`, etc. to return errors instead of panicking
