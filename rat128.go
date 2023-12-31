@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"math/bits"
 	"strconv"
 	"strings"
@@ -123,6 +124,17 @@ func FromFloat64(v float64) (N, error) {
 		return N{}, ErrDenOverflow
 	}
 	return New(s*m, 1<<-e), nil
+}
+
+// FromBigRat converts a big.Rat to N, if it is possible to do so.
+func FromBigRat(r *big.Rat) (N, error) {
+	num, den := r.Num(), r.Denom()
+	if !num.IsInt64() {
+		return N{}, ErrNumOverflow
+	} else if !den.IsInt64() {
+		return N{}, ErrDenOverflow
+	}
+	return Try(num.Int64(), den.Int64())
 }
 
 // Num returns the numerator of x.
@@ -373,6 +385,11 @@ func (x N) Float64() (v float64, exact bool) {
 	// and the denominator is a power of two
 	nIsPow2 := bits.OnesCount64(uint64(n)) == 1
 	return float64(m) / float64(n), prec <= 53 && nIsPow2
+}
+
+// BigRat converts x to a new big.Rat.
+func (x N) BigRat() *big.Rat {
+	return big.NewRat(x.Num(), x.Den())
 }
 
 // reduce returns x in lowest terms.
