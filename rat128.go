@@ -125,6 +125,14 @@ func ParseDecimalString(s string) (N, error) {
 	if digits == 0 {
 		return N{}, ErrFmtInvalid
 	}
+	if firstNonzeroIndex < 0 {
+		return N{}, nil
+	}
+	if dotIndex >= 0 {
+		lastNonzeroIndex = max(lastNonzeroIndex, dotIndex-1)
+	} else {
+		lastNonzeroIndex = max(lastNonzeroIndex, len(s)-1)
+	}
 	pow10 := 0
 	if dotIndex < 0 {
 		pow10 = lastNonzeroIndex - firstNonzeroIndex
