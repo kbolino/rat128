@@ -30,8 +30,8 @@ var (
 //
 // Valid values are obtained in the following ways:
 //   - the zero value of the type N
-//   - returned by the New function
-//   - returned by arithmetic on any valid values
+//   - returned by the New or Try functions (with non-nil error)
+//   - returned by arithmetic on any valid values (with non-nil error)
 //   - copied from a valid value
 //
 // N has proper value semantics and its values can be freely copied.

@@ -40,6 +40,8 @@ The following are always considered issues:
   changes and thus a new major version
 - Unexpected behavior; for example, operations on otherwise valid values
   returning invalid results instead of valid results, a panic, or an error
+- Panics in `Try*` functions/methods; these return errors, so ordinary
+  arithmetic exceptions should not cause panics
 
 The following will be evaluated on a case-by-case basis:
 
