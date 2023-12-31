@@ -493,12 +493,14 @@ func (x N) Mul(y N) N {
 }
 
 // TryDiv divides x by y and returns the result.
-// TryDiv returns 0 and a non-nil error if the result would overflow.
+// TryDiv returns 0 and a non-nil error for division by zero or if the result
+// would overflow.
 func (x N) TryDiv(y N) (N, error) {
-	if y.m == 0 {
-		return N{}, ErrDivByZero
+	if inv, err := y.TryInv(); err != nil {
+		return N{}, err
+	} else {
+		return x.TryMul(inv)
 	}
-	return x.TryMul(y.Inv())
 }
 
 // Div divides x by y and returns the result.
