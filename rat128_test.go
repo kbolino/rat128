@@ -79,6 +79,17 @@ func TestN_TryMul(t *testing.T) {
 		{New(P1, P2*P3), New(-P2, P1*P3), New(-1, P3*P3), nil},
 		{New(-P1, P2*P3), New(-P2, P1*P3), New(1, P3*P3), nil},
 		{New(P1*P2, P3), New(P3, P4), New(P1*P2, P4), nil},
+		{New(P1*P2*P3, P4), New(P2*P3*P4, P1), Zero, rat128.ErrNumOverflow},
+		{New(math.MaxInt32-1, 1), New(math.MaxInt32-1, 1), New((math.MaxInt32-1)*(math.MaxInt32-1), 1), nil},
+		{New(1, math.MaxInt32-1), New(1, math.MaxInt32-1), New(1, (math.MaxInt32-1)*(math.MaxInt32-1)), nil},
+		{New(math.MaxInt32, 1), New(math.MaxInt32, 1), New(math.MaxInt32*math.MaxInt32, 1), nil},
+		{New(1, math.MaxInt32), New(1, math.MaxInt32), New(1, math.MaxInt32*math.MaxInt32), nil},
+		{New(math.MaxInt64, 1), New(1, 1), New(math.MaxInt64, 1), nil},
+		{New(1, math.MaxInt64), New(1, 1), New(1, math.MaxInt64), nil},
+		{New(math.MaxInt64, 1), New(-1, 1), New(-math.MaxInt64, 1), nil},
+		{New(1, math.MaxInt64), New(-1, 1), New(-1, math.MaxInt64), nil},
+		{New(math.MaxInt64, 1), New(math.MaxInt64, 1), Zero, rat128.ErrNumOverflow},
+		{New(1, math.MaxInt64), New(1, math.MaxInt64), Zero, rat128.ErrDenOverflow},
 	}
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("(%s)*(%s)", c.X.RationalString("_"), c.Y.RationalString("_")), func(t *testing.T) {
