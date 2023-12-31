@@ -18,7 +18,7 @@ var (
 	ErrDenOverflow = errors.New("denominator overflow")
 	ErrNumOverflow = errors.New("numerator overflow")
 	ErrDivByZero   = errors.New("division by zero")
-	ErrFmtInvalid  = errors.New("invalid rational number format")
+	ErrFmtInvalid  = errors.New("invalid number format")
 )
 
 // N is a rational number with 64-bit numerator and denominator.
@@ -78,6 +78,95 @@ func ParseRationalString(s string) (N, error) {
 		return N{}, fmt.Errorf("parsing denominator: %w", err)
 	}
 	return Try(num, den)
+}
+
+// ParseDecimalString parses a string representation of a decimal number as a
+// rational number. The string must be in the form "A", "A.B", or ".B" where
+// A is an integer that may have leading zeroes and may be negative (indicated
+// with leading hyphen) and B is an integer that may have trailing zeroes.
+// The concatenation of A without leading zeroes and B without trailing zeroes
+// must not overflow int64.
+func ParseDecimalString(s string) (N, error) {
+	neg := false
+	firstNonzeroIndex := -1
+	lastNonzeroIndex := -1
+	dotIndex := -1
+	digits := 0
+	for i, r := range s {
+		switch r {
+		case '-':
+			if i != 0 {
+				return N{}, ErrFmtInvalid
+			}
+			neg = true
+		case '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			if firstNonzeroIndex < 0 {
+				firstNonzeroIndex = i
+			}
+			lastNonzeroIndex = i
+			fallthrough
+		case '0':
+			digits++
+		case '.':
+			if dotIndex >= 0 {
+				return N{}, ErrFmtInvalid
+			}
+			dotIndex = i
+			if firstNonzeroIndex < 0 {
+				firstNonzeroIndex = i
+			}
+		default:
+			return N{}, ErrFmtInvalid
+		}
+	}
+	if digits == 0 {
+		return N{}, ErrFmtInvalid
+	}
+	pow10 := 0
+	if dotIndex < 0 {
+		pow10 = lastNonzeroIndex - firstNonzeroIndex
+	} else if firstNonzeroIndex < dotIndex {
+		pow10 = dotIndex - firstNonzeroIndex - 1
+	}
+	place := New(1, 1)
+	ten := New(10, 1)
+	for i := 0; i < pow10; i++ {
+		var err error
+		place, err = place.TryMul(ten)
+		if err != nil {
+			return N{}, fmt.Errorf("computing pow10(%d): %w", i+1, err)
+		}
+	}
+	var result N
+	first := true
+	for i := firstNonzeroIndex; i <= lastNonzeroIndex; i++ {
+		if i == dotIndex {
+			first = false
+			continue
+		}
+		if first {
+			first = false
+		} else {
+			var err error
+			place, err = place.TryDiv(ten)
+			if err != nil {
+				return N{}, fmt.Errorf("updating place for digit at index %d: %w", i, err)
+			}
+		}
+		digit := New(int64(s[i]-'0'), 1)
+		placed, err := digit.TryMul(place)
+		if err != nil {
+			return N{}, fmt.Errorf("placing digit at index %d: %w", i, err)
+		}
+		result, err = result.TryAdd(placed)
+		if err != nil {
+			return N{}, fmt.Errorf("adding digit at index %d: %w", i, err)
+		}
+	}
+	if neg {
+		result = result.Neg()
+	}
+	return result, nil
 }
 
 // FromFloat64 extracts a rational number from a float64. The result will be
@@ -286,10 +375,16 @@ func (x N) TryAdd(y N) (N, error) {
 
 	// Finally, find the GCD of the numerator and denominator and divide it out
 	// to reduce the result before the final overflow checks.
-	d := GCD(nx, ny)
+	d := uint64(GCD(nx, ny))
+	if d <= mh {
+		return N{}, ErrNumOverflow
+	}
 	m, _ := bits.Div64(mh, ml, uint64(d))
 	if m > math.MaxInt64 {
 		return N{}, ErrNumOverflow
+	}
+	if d <= nh {
+		return N{}, ErrDenOverflow
 	}
 	n, _ := bits.Div64(nh, nl, uint64(d))
 	if n > math.MaxInt64 {
