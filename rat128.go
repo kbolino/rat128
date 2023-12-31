@@ -26,7 +26,9 @@ var (
 // One bit of the numerator is used for the sign and the denominator must be
 // positive, so only 63 bits of precision are actually available in each.
 // Internally, the denominator is biased by 1, which means the zero value is
-// equivalent to 0/1 and thus valid and equal to 0.
+// equivalent to 0/1 and thus valid and equal to 0. Due to the asymmetry of
+// the int64 type (|math.MinInt64| > math.MaxInt64), math.MinInt64 is not a
+// valid numerator in reduced form.
 //
 // Valid values are obtained in the following ways:
 //   - the zero value of the type N
@@ -42,15 +44,16 @@ type N struct {
 }
 
 // Try creates a new rational number with the given numerator and denominator.
-// Try returns an error if the denominator is not positive.
+// Try returns an error if the reduced numerator is math.MinInt64 or if the
+// denominator is not positive.
 func Try(num, den int64) (N, error) {
 	if den <= 0 {
 		return N{}, ErrDenInvalid
 	}
-	return N{num, den - 1}.reduce(), nil
+	return N{num, den - 1}.reduce()
 }
 
-// New is like Try but panics if the denominator is not positive.
+// New is like Try but panics instead of returning an error.
 func New(num, den int64) N {
 	n, err := Try(num, den)
 	if err != nil {
@@ -240,7 +243,13 @@ func (x N) Den() int64 {
 // Invalid numbers do not arise under normal circumstances, but may occur if
 // a value is constructed or manipulated using unsafe operations.
 func (x N) IsValid() bool {
-	return x.n >= 0 && x.n != math.MaxInt64 && x.reduce() == x
+	if x.n < 0 || x.n == math.MaxInt64 {
+		return false
+	}
+	if r, err := x.reduce(); err != nil || x != r {
+		return false
+	}
+	return true
 }
 
 // IsZero returns true if x is equal to 0.
@@ -490,9 +499,15 @@ func (x N) Div(y N) N {
 	return x.Mul(y.Inv())
 }
 
+// RationalString returns a string representation of x, as m+sep+n.
+// For example, x.String() is equivalent to x.RationalString("/").
+func (x N) RationalString(sep string) string {
+	return fmt.Sprintf("%d%s%d", x.Num(), sep, x.Den())
+}
+
 // String returns a string representation of x, as m/n.
 func (x N) String() string {
-	return fmt.Sprintf("%d/%d", x.Num(), x.Den())
+	return x.RationalString("/")
 }
 
 // DecimalString returns a string representation of x, as a decimal number
@@ -616,17 +631,23 @@ func (x N) BigRat() *big.Rat {
 }
 
 // reduce returns x in lowest terms.
-func (x N) reduce() N {
+func (x N) reduce() (N, error) {
 	if x.m == 0 {
-		return N{}
+		return N{}, nil
 	}
 	sgn := int64(x.Sign())
 	m, n := abs64(x.Num()), x.Den()
 	d := GCD(m, n)
-	return N{sgn * (m / d), (n / d) - 1}
+	num := sgn * (m / d)
+	if num == math.MinInt64 {
+		return N{}, ErrNumOverflow
+	}
+	den := (n / d) - 1
+	return N{num, den}, nil
 }
 
 // abs64 returns the absolute value of x.
+// WARNING: abs64(math.MinInt64) == math.MinInt64 < 0.
 func abs64(x int64) int64 {
 	if x < 0 {
 		return -x

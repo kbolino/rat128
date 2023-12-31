@@ -42,11 +42,18 @@ func TestN_TryAdd(t *testing.T) {
 		{New(-P1, P2*P3), New(P2, P1*P3), New(P2*P2-P1*P1, P1*P2*P3), nil},
 		{New(P1, P2*P3), New(-P2, P1*P3), New(P1*P1-P2*P2, P1*P2*P3), nil},
 		{New(-P1, P2*P3), New(-P2, P1*P3), New(-(P1*P1 + P2*P2), P1*P2*P3), nil},
+		{New(P1*P2, P3), New(P1*P3, P2), New(P1*P2*P2+P1*P3*P3, P2*P3), nil},
+		{New(P1*P2*P3, P4), New(P2*P3*P4, P1), Zero, rat128.ErrNumOverflow},
+		{New(math.MaxInt64, 1), New(1, 1), Zero, rat128.ErrNumOverflow},
+		{New(math.MaxInt64, 1), New(-1, 1), New(math.MaxInt64-1, 1), nil},
+		{New(math.MinInt64+1, 1), New(1, 1), New(math.MinInt64+2, 1), nil},
+		{New(math.MinInt64+1, 1), New(-1, 1), Zero, rat128.ErrNumOverflow},
 	}
 	for _, c := range cases {
-		t.Run(fmt.Sprintf("(%s)+(%s)", c.X, c.Y), func(t *testing.T) {
+		t.Run(fmt.Sprintf("(%s)+(%s)", c.X.RationalString("_"), c.Y.RationalString("_")), func(t *testing.T) {
 			z, err := c.X.TryAdd(c.Y)
 			if err != c.Err {
+				t.Log("invalid value", z)
 				t.Errorf("got error %v, want %v", err, c.Err)
 			} else if c.Err == nil && z != c.Z {
 				t.Errorf("got %v, want %v", z, c.Z)
@@ -74,9 +81,10 @@ func TestN_TryMul(t *testing.T) {
 		{New(P1*P2, P3), New(P3, P4), New(P1*P2, P4), nil},
 	}
 	for _, c := range cases {
-		t.Run(fmt.Sprintf("(%s)*(%s)", c.X, c.Y), func(t *testing.T) {
+		t.Run(fmt.Sprintf("(%s)*(%s)", c.X.RationalString("_"), c.Y.RationalString("_")), func(t *testing.T) {
 			z, err := c.X.TryMul(c.Y)
 			if err != c.Err {
+				t.Log("invalid value", z)
 				t.Errorf("got error %v, want %v", err, c.Err)
 			} else if c.Err == nil && z != c.Z {
 				t.Errorf("got %v, want %v", z, c.Z)
