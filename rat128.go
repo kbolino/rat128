@@ -495,6 +495,69 @@ func (x N) String() string {
 	return fmt.Sprintf("%d/%d", x.Num(), x.Den())
 }
 
+// DecimalString returns a string representation of x, as a decimal number
+// to the given number of digits after the decimal point.
+// The last digit is rounded to nearest, with ties rounded away from zero.
+// If prec <= 0, the decimal point is omitted from the string.
+// If the result of rounding is zero but x is negative, the string will still
+// include a negative sign.
+//
+// The following relation should hold for all valid values of x:
+//
+//	x.DecimalString(prec) == x.BigRat().FloatString(prec)
+func (x N) DecimalString(prec int) string {
+	var buf strings.Builder
+	m, n := x.Num(), x.Den()
+	if m < 0 {
+		buf.WriteByte('-')
+		m = -m
+	}
+	// start with empty digit to hold carryover from rounding
+	digits := []byte{'0'}
+	q, r := m/n, m%n
+	digits = strconv.AppendInt(digits, q, 10)
+	for i := 0; i <= prec; i++ {
+		if r < math.MaxInt64/10 {
+			r *= 10
+			q, r = r/n, r%n
+		} else {
+			rh, rl := bits.Mul64(uint64(r), 10)
+			quo, rem := bits.Div64(rh, rl, uint64(n))
+			// quo < 10 and rem < n so int64 cast is safe
+			q, r = int64(quo), int64(rem)
+		}
+		digits = append(digits, byte(q)+'0')
+	}
+	// use digit in last position to round
+	if k := len(digits) - 1; digits[k] >= '5' {
+		digits[k-1]++
+		for i := k - 1; i >= 0; i-- {
+			if digits[i] <= '9' {
+				break
+			}
+			digits[i] = '0'
+			digits[i-1]++
+		}
+	}
+	start := 0
+	end := len(digits) - 1
+	if digits[0] == '0' {
+		start = 1
+	}
+	if prec > 0 {
+		dotIndex := len(digits) - prec - 1
+		for i := len(digits) - 1; i > dotIndex; i-- {
+			digits[i] = digits[i-1]
+		}
+		digits[dotIndex] = '.'
+		end = len(digits)
+	}
+	buf.Write(digits[start:end])
+	// this may return "-0" etc. which could be filtered out but agrees with
+	// the output of big.Rat.FloatString
+	return buf.String()
+}
+
 // Float64 returns the floating-point equivalent of x. If exact is true, then
 // v is exactly equal to x; otherwise, it is the closest approximation.
 func (x N) Float64() (v float64, exact bool) {
