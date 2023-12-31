@@ -27,6 +27,12 @@ is fairly straightforward to use:
   the risk of overflow.
 - Converting to and from floating-point values should be exact wherever it is
   possible to do so, and approximation should be explicit.
+- There are panicking and panic-free versions of most operations. This means
+  there are actually three ways to use this library:
+  - Use the panicking operations (New, Add, etc.)
+  - Use the panic-free operations (Try, TryAdd, etc.) and check for errors
+  - Use the panic-free operations and ignore the errors; this is not
+    recommended but will be fastest
 
 ## Reporting issues
 
