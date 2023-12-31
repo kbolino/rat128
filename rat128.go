@@ -273,13 +273,23 @@ func (x N) Neg() N {
 	return N{-x.m, x.n}
 }
 
-// Inv returns the inverse of x, 1/x.
-func (x N) Inv() N {
+// TryInv returns the inverse of x, 1/x.
+// If x.Num() == 0, TryInv returns (0, ErrDivByZero).
+func (x N) TryInv() (N, error) {
 	if x.m == 0 {
-		panic(ErrDivByZero)
+		return N{}, ErrDivByZero
 	}
 	sgn := int64(x.Sign())
-	return New(sgn*x.Den(), abs64(x.Num()))
+	return Try(sgn*x.Den(), abs64(x.Num()))
+}
+
+// Inv is like TryInv but panics instead of returning an error.
+func (x N) Inv() N {
+	y, err := x.TryInv()
+	if err != nil {
+		panic(err)
+	}
+	return y
 }
 
 // Abs returns the absolute value of x, |x|.
