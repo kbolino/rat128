@@ -22,58 +22,63 @@ var Zero rat128.N
 
 type ArithCase struct {
 	X, Y, Z rat128.N
+	Err     error
 }
 
-func TestN_Add(t *testing.T) {
+func TestN_TryAdd(t *testing.T) {
 	cases := []ArithCase{
-		{New(1, 1), New(1, 1), New(2, 1)},
-		{New(-1, 1), New(1, 1), New(0, 1)},
-		{New(1, 1), New(-1, 1), New(0, 1)},
-		{New(-1, 1), New(-1, 1), New(-2, 1)},
-		{New(1, 2), New(1, 2), New(1, 1)},
-		{New(-1, 2), New(1, 2), New(0, 1)},
-		{New(1, 2), New(-1, 2), New(0, 1)},
-		{New(-1, 2), New(-1, 2), New(-1, 1)},
-		{New(1, 2), New(1, 4), New(3, 4)},
-		{New(-1, 2), New(1, 4), New(-1, 4)},
-		{New(7, 11*13), New(11, 7*13), New(7*7+11*11, 7*11*13)},
-		{New(P1, P2*P3), New(P2, P1*P3), New(P1*P1+P2*P2, P1*P2*P3)},
-		{New(-P1, P2*P3), New(P2, P1*P3), New(P2*P2-P1*P1, P1*P2*P3)},
-		{New(P1, P2*P3), New(-P2, P1*P3), New(P1*P1-P2*P2, P1*P2*P3)},
-		{New(-P1, P2*P3), New(-P2, P1*P3), New(-(P1*P1 + P2*P2), P1*P2*P3)},
+		{New(1, 1), New(1, 1), New(2, 1), nil},
+		{New(-1, 1), New(1, 1), New(0, 1), nil},
+		{New(1, 1), New(-1, 1), New(0, 1), nil},
+		{New(-1, 1), New(-1, 1), New(-2, 1), nil},
+		{New(1, 2), New(1, 2), New(1, 1), nil},
+		{New(-1, 2), New(1, 2), New(0, 1), nil},
+		{New(1, 2), New(-1, 2), New(0, 1), nil},
+		{New(-1, 2), New(-1, 2), New(-1, 1), nil},
+		{New(1, 2), New(1, 4), New(3, 4), nil},
+		{New(-1, 2), New(1, 4), New(-1, 4), nil},
+		{New(7, 11*13), New(11, 7*13), New(7*7+11*11, 7*11*13), nil},
+		{New(P1, P2*P3), New(P2, P1*P3), New(P1*P1+P2*P2, P1*P2*P3), nil},
+		{New(-P1, P2*P3), New(P2, P1*P3), New(P2*P2-P1*P1, P1*P2*P3), nil},
+		{New(P1, P2*P3), New(-P2, P1*P3), New(P1*P1-P2*P2, P1*P2*P3), nil},
+		{New(-P1, P2*P3), New(-P2, P1*P3), New(-(P1*P1 + P2*P2), P1*P2*P3), nil},
 	}
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("(%s)+(%s)", c.X, c.Y), func(t *testing.T) {
-			z := c.X.Add(c.Y)
-			if z != c.Z {
+			z, err := c.X.TryAdd(c.Y)
+			if err != c.Err {
+				t.Errorf("got error %v, want %v", err, c.Err)
+			} else if c.Err == nil && z != c.Z {
 				t.Errorf("got %v, want %v", z, c.Z)
 			}
 		})
 	}
 }
 
-func TestN_Mul(t *testing.T) {
+func TestN_TryMul(t *testing.T) {
 	cases := []ArithCase{
-		{New(1, 1), New(1, 1), New(1, 1)},
-		{New(-1, 1), New(1, 1), New(-1, 1)},
-		{New(1, 1), New(-1, 1), New(-1, 1)},
-		{New(-1, 1), New(-1, 1), New(1, 1)},
-		{New(1, 2), New(1, 2), New(1, 4)},
-		{New(-1, 2), New(1, 2), New(-1, 4)},
-		{New(1, 2), New(-1, 2), New(-1, 4)},
-		{New(-1, 2), New(-1, 2), New(1, 4)},
-		{New(1, 2), New(1, 4), New(1, 8)},
-		{New(7, 11*13), New(11, 7*13), New(1, 13*13)},
-		{New(P1, P2*P3), New(P2, P1*P3), New(1, P3*P3)},
-		{New(-P1, P2*P3), New(P2, P1*P3), New(-1, P3*P3)},
-		{New(P1, P2*P3), New(-P2, P1*P3), New(-1, P3*P3)},
-		{New(-P1, P2*P3), New(-P2, P1*P3), New(1, P3*P3)},
-		{New(P1*P2, P3), New(P3, P4), New(P1*P2, P4)},
+		{New(1, 1), New(1, 1), New(1, 1), nil},
+		{New(-1, 1), New(1, 1), New(-1, 1), nil},
+		{New(1, 1), New(-1, 1), New(-1, 1), nil},
+		{New(-1, 1), New(-1, 1), New(1, 1), nil},
+		{New(1, 2), New(1, 2), New(1, 4), nil},
+		{New(-1, 2), New(1, 2), New(-1, 4), nil},
+		{New(1, 2), New(-1, 2), New(-1, 4), nil},
+		{New(-1, 2), New(-1, 2), New(1, 4), nil},
+		{New(1, 2), New(1, 4), New(1, 8), nil},
+		{New(7, 11*13), New(11, 7*13), New(1, 13*13), nil},
+		{New(P1, P2*P3), New(P2, P1*P3), New(1, P3*P3), nil},
+		{New(-P1, P2*P3), New(P2, P1*P3), New(-1, P3*P3), nil},
+		{New(P1, P2*P3), New(-P2, P1*P3), New(-1, P3*P3), nil},
+		{New(-P1, P2*P3), New(-P2, P1*P3), New(1, P3*P3), nil},
+		{New(P1*P2, P3), New(P3, P4), New(P1*P2, P4), nil},
 	}
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("(%s)*(%s)", c.X, c.Y), func(t *testing.T) {
-			z := c.X.Mul(c.Y)
-			if z != c.Z {
+			z, err := c.X.TryMul(c.Y)
+			if err != c.Err {
+				t.Errorf("got error %v, want %v", err, c.Err)
+			} else if c.Err == nil && z != c.Z {
 				t.Errorf("got %v, want %v", z, c.Z)
 			}
 		})
