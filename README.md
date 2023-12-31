@@ -50,6 +50,9 @@ The following will be evaluated on a case-by-case basis:
   values created through unsafe code, reflection, unsychronized sharing
   across goroutines, cgo hacks, memory corruption, etc.
 - Converting to formats outside of the core language and standard library
+- Performance regressions; in general, this library should outperform `big.Rat`
+  on an apples-to-apples basis on 64-bit machines, but the exact performance
+  characteristics are not guaranteed
 
 ## To Do
 
