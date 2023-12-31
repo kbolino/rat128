@@ -56,8 +56,7 @@ The following will be evaluated on a case-by-case basis:
 
 ## To Do
 
-- Improved overflow detection to reduce usage of widened arithmetic and
-  arbitrary-precision values
+- Improved overflow detection to reduce usage of widened arithmetic
 - Other optimizations where feasible/practical (e.g. faster `Cmp`)
 - Parsing and outputting decimal strings
 - More test coverage
