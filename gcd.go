@@ -3,8 +3,8 @@ package rat128
 // GCD returns the greatest common denominator (GCD) of m and n.
 // The GCD is the largest integer that divides both m and n.
 func GCD(m, n int64) int64 {
-	// there are other algorithms, but ExtGCD took 4.5 to 5.0 ns/op for a wide
-	// range of m and n on an AMD Ryzen 5600X so it is fast and stable enough
+	// there are other algorithms, but ExtGCD took 2 to 11 ns/op for a wide
+	// range of m and n on an AMD Ryzen 5600X so it is probably fast enough
 	_, _, d := ExtGCD(m, n)
 	return d
 }
