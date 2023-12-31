@@ -506,24 +506,50 @@ func (x N) String() string {
 //
 //	x.DecimalString(prec) == x.BigRat().FloatString(prec)
 func (x N) DecimalString(prec int) string {
+	if prec < 0 {
+		prec = 0
+	}
 	var buf strings.Builder
 	m, n := x.Num(), x.Den()
+	// write the negative sign if needed then ensure m is in absolute value
 	if m < 0 {
 		buf.WriteByte('-')
 		m = -m
 	}
-	// start with empty digit to hold carryover from rounding
+	// although we have a string builder already, we need a mutable slice to
+	// hold the digits, because rounding is done with schoolbook arithmetic
+	// and carry over may change every single digit and even prepend a 1;
+	// thus we start with a leading zero to make room for it
 	digits := []byte{'0'}
+	// we start by dividing m over n with remainder; the quotient will be the
+	// integer part of the number and the remainder will be the fractional part
 	q, r := m/n, m%n
+	// we append the integer part and then we will append the decimal digits,
+	// one by one without the decimal point; we will put it in later
 	digits = strconv.AppendInt(digits, q, 10)
-	for i := 0; i <= prec; i++ {
+	// going out to prec+1 gives us an extra digit for rounding
+	for i := 0; i < prec+1; i++ {
+		if r == 0 {
+			digits = append(digits, '0')
+			continue
+		}
+		// now we multiply the remainder by 10 to extract another decimal
+		// digit, then re-divide by 10 to get a new quotient and remainder for
+		// the next iteration
 		if r < math.MaxInt64/10 {
+			// use ordinary arithmetic if we can
 			r *= 10
 			q, r = r/n, r%n
 		} else {
+			// r is too large so we have to use wide arithmetic to avoid
+			// overflow; this gives us (rh:rl) <= MaxInt64*10, which is
+			// (4:18446744073709551606) according to big.Int
 			rh, rl := bits.Mul64(uint64(r), 10)
+			// we know that we got here because r >= MaxInt64/10 and moreover
+			// that r is a remainder of division by n, so n > r, thus
+			// n > MaxInt64/10 > rh and therefore Div64 won't panic
 			quo, rem := bits.Div64(rh, rl, uint64(n))
-			// quo < 10 and rem < n so int64 cast is safe
+			// quo < 10 and rem < n <= MaxInt64 so int64 cast is safe
 			q, r = int64(quo), int64(rem)
 		}
 		digits = append(digits, byte(q)+'0')
@@ -539,12 +565,16 @@ func (x N) DecimalString(prec int) string {
 			digits[i-1]++
 		}
 	}
+	// prepare the digit string to be written out
 	start := 0
 	end := len(digits) - 1
 	if digits[0] == '0' {
+		// skip the leading zero if we didn't use it
 		start = 1
 	}
 	if prec > 0 {
+		// shift the digits after the decimal point by 1 to make room for it;
+		// we have space for it because we kept an extra digit for rounding
 		dotIndex := len(digits) - prec - 1
 		for i := len(digits) - 1; i > dotIndex; i-- {
 			digits[i] = digits[i-1]
