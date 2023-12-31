@@ -189,6 +189,8 @@ func TestParseDecimalString(t *testing.T) {
 	}{
 		{"0", New(0, 1), false},
 		{"1.0", New(1, 1), false},
+		{"10", New(10, 1), false},
+		{"100", New(100, 1), false},
 		{"1.23", New(123, 100), false},
 		{"123.0", New(123, 1), false},
 		{"1234567890.", New(1234567890, 1), false},
