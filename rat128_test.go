@@ -60,6 +60,30 @@ func TestN_TryAdd(t *testing.T) {
 	}
 }
 
+func TestN_Neg(t *testing.T) {
+	cases := []struct {
+		X, Z rat128.N
+	}{
+		{New(0, 1), New(0, 1)},
+		{New(1, 1), New(-1, 1)},
+		{New(-1, 1), New(1, 1)},
+		{New(1, 2), New(-1, 2)},
+		{New(-1, 2), New(1, 2)},
+		{New(math.MaxInt64, 1), New(-math.MaxInt64, 1)},
+		{New(-math.MaxInt64, 1), New(math.MaxInt64, 1)},
+		{New(1, math.MaxInt64), New(-1, math.MaxInt64)},
+		{New(-1, math.MaxInt64), New(1, math.MaxInt64)},
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("(%s)", c.X.RationalString("_")), func(t *testing.T) {
+			z := c.X.Neg()
+			if z != c.Z {
+				t.Errorf("got %v, want %v", z, c.Z)
+			}
+		})
+	}
+}
+
 func TestN_TryMul(t *testing.T) {
 	cases := []struct {
 		X, Y, Z rat128.N
