@@ -20,13 +20,11 @@ const (
 var New = rat128.New
 var Zero rat128.N
 
-type ArithCase struct {
-	X, Y, Z rat128.N
-	Err     error
-}
-
 func TestN_TryAdd(t *testing.T) {
-	cases := []ArithCase{
+	cases := []struct {
+		X, Y, Z rat128.N
+		Err     error
+	}{
 		{New(1, 1), New(1, 1), New(2, 1), nil},
 		{New(-1, 1), New(1, 1), New(0, 1), nil},
 		{New(1, 1), New(-1, 1), New(0, 1), nil},
@@ -63,7 +61,10 @@ func TestN_TryAdd(t *testing.T) {
 }
 
 func TestN_TryMul(t *testing.T) {
-	cases := []ArithCase{
+	cases := []struct {
+		X, Y, Z rat128.N
+		Err     error
+	}{
 		{New(1, 1), New(1, 1), New(1, 1), nil},
 		{New(-1, 1), New(1, 1), New(-1, 1), nil},
 		{New(1, 1), New(-1, 1), New(-1, 1), nil},
@@ -94,6 +95,31 @@ func TestN_TryMul(t *testing.T) {
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("(%s)*(%s)", c.X.RationalString("_"), c.Y.RationalString("_")), func(t *testing.T) {
 			z, err := c.X.TryMul(c.Y)
+			if err != c.Err {
+				t.Log("invalid value", z)
+				t.Errorf("got error %v, want %v", err, c.Err)
+			} else if c.Err == nil && z != c.Z {
+				t.Errorf("got %v, want %v", z, c.Z)
+			}
+		})
+	}
+}
+
+func TestN_TryInv(t *testing.T) {
+	cases := []struct {
+		X, Z rat128.N
+		Err  error
+	}{
+		{New(1, 1), New(1, 1), nil},
+		{New(-1, 1), New(-1, 1), nil},
+		{New(0, 1), New(0, 1), rat128.ErrDivByZero},
+		{New(2, 1), New(1, 2), nil},
+		{New(1, 2), New(2, 1), nil},
+		{New(-1, 2), New(-2, 1), nil},
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("(%s)", c.X.RationalString("_")), func(t *testing.T) {
+			z, err := c.X.TryInv()
 			if err != c.Err {
 				t.Log("invalid value", z)
 				t.Errorf("got error %v, want %v", err, c.Err)

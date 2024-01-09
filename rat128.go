@@ -62,6 +62,17 @@ func New(num, den int64) N {
 	return n
 }
 
+// tryAlreadyReduced is like Try but assumes the numerator and denominator are
+// already in reduced form.
+func tryAlreadyReduced(num, den int64) (N, error) {
+	if den <= 0 {
+		return N{}, ErrDenInvalid
+	} else if num == math.MinInt64 {
+		return N{}, ErrNumOverflow
+	}
+	return N{num, den - 1}, nil
+}
+
 // ParseRationalString parses a string representation of a rational number.
 // The string must be in the form "m/n", where m and n are integers in base 10,
 // n is not zero, and only m may be negative (indicated with leading hyphen).
@@ -288,7 +299,7 @@ func (x N) TryInv() (N, error) {
 		return N{}, ErrDivByZero
 	}
 	sgn := int64(x.Sign())
-	return Try(sgn*x.Den(), abs64(x.Num()))
+	return tryAlreadyReduced(sgn*x.Den(), abs64(x.Num()))
 }
 
 // Inv is like TryInv but panics instead of returning an error.
@@ -474,7 +485,7 @@ func (x N) TryMul(y N) (N, error) {
 	if mx < math.MaxInt32 && my < math.MaxInt32 && nx < math.MaxInt32 && ny < math.MaxInt32 {
 		// See Add for a detailed overflow analysis; suffice it to say that
 		// the above if statement protects us from overflow here.
-		return Try(sgn*mx*my, nx*ny)
+		return tryAlreadyReduced(sgn*mx*my, nx*ny)
 	}
 
 	// At this point, we can't trust naive multiplication to not overflow, so
@@ -487,7 +498,7 @@ func (x N) TryMul(y N) (N, error) {
 	if nh > 0 || nl > math.MaxInt64 {
 		return N{}, ErrDenOverflow
 	}
-	return Try(sgn*int64(ml), int64(nl))
+	return tryAlreadyReduced(sgn*int64(ml), int64(nl))
 }
 
 // Mul multiplies x and y and returns the result.
