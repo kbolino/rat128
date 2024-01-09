@@ -3,21 +3,25 @@
 Fixed-precision rational numbers for Go. This module has no dependencies and
 is fairly straightforward to use:
 
-- Construct new values with `var x rat128.N` or `n := rat128.New(m, n)`.
+- Construct new values with `var x rat128.N`, `x := rat128.New(m, n)`, or
+  `x, err := rat128.Try(m, n)`.
 - Retrieve the numerator and denominator with `x.Num()` and `x.Den()`,
   respectively.
-- Perform arithmetic with `x.Add(y)`, `x.Mul(y)`, etc.
+- Perform arithmetic with panicking `x.Add(y)`, `x.Mul(y)` or error-returning
+  `x.TryAdd(y)`, `x.TryMul(y)`, etc.
 - Convert from/to `float64` with `FromFloat64` and `x.Float64()` respectively.
+- Convert from/to decimal strings (`"12.34"`) with `ParseDecimalString` and
+  `x.DecimalString(digits)` respectively.
 
 ## Design Goals
 
+- First and foremost: value semantics.
+  Unlike `big.Rat` in the standard library, `rat128.N` is a value type like
+  `int64` or `float32` and is safe to copy and compare with `==` and `!=`.
+  Methods return values instead of mutating their receiver.
 - Mathematical operations should return correct results. If they don't, the
   incorrect behavior is a bug and fixing this bug will be treated as a
   non-breaking change. Do not rely on incorrect results.
-- Unlike `big.Rat` in the standard library, `rat128.N` is a value type and
-  thus can be safely copied around. Except where necessary to satisfy an
-  interface, methods only take value receivers and always return their results
-  to make this explicit.
 - Widened integer arithmetic is used where possible to avoid overflow of
   intermediate values used in basic arithmetic operations (add, subtract,
   multiply, and divide). The finite precision is more limiting than `big.Rat`,
