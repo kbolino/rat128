@@ -226,7 +226,7 @@ func FromFloat64(v float64) (N, error) {
 			// v needs more bits than we have
 			return N{}, ErrNumOverflow
 		}
-		return New(s*(m<<e), 1), nil
+		return Try(s*(m<<e), 1)
 	}
 	// else, v is not an integer
 
@@ -234,7 +234,7 @@ func FromFloat64(v float64) (N, error) {
 		// the denominator of v needs more bits than we have
 		return N{}, ErrDenOverflow
 	}
-	return New(s*m, 1<<-e), nil
+	return Try(s*m, 1<<-e)
 }
 
 // FromBigRat converts a big.Rat to N, if it is possible to do so.
